@@ -1,0 +1,1250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IPO MD&A KPI Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root {
+  --navy: #1a2744;
+  --navy-light: #243352;
+  --blue: #3b82f6;
+  --blue-light: #60a5fa;
+  --green: #10b981;
+  --red: #ef4444;
+  --amber: #f59e0b;
+  --purple: #8b5cf6;
+  --slate-50: #f8fafc;
+  --slate-100: #f1f5f9;
+  --slate-200: #e2e8f0;
+  --slate-300: #cbd5e1;
+  --slate-400: #94a3b8;
+  --slate-500: #64748b;
+  --slate-600: #475569;
+  --slate-700: #334155;
+  --slate-800: #1e293b;
+  --slate-900: #0f172a;
+  --radius: 10px;
+  --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
+  --shadow-lg: 0 4px 24px rgba(0,0,0,.1);
+}
+* { margin:0; padding:0; box-sizing:border-box; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; background: var(--slate-100); color: var(--slate-800); line-height:1.5; }
+
+/* ── Header ── */
+.header { background: linear-gradient(135deg, var(--navy) 0%, var(--navy-light) 100%); color:#fff; padding: 20px 32px; display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:100; box-shadow: 0 2px 12px rgba(0,0,0,.2); }
+.header h1 { font-size:20px; font-weight:700; letter-spacing:-.3px; }
+.header span { font-size:13px; color: var(--slate-400); }
+
+/* ── Nav Tabs ── */
+.nav { display:flex; gap:4px; background: var(--slate-200); padding:4px; border-radius:8px; margin:20px 32px 0; width:fit-content; }
+.nav button { padding:8px 20px; border:none; border-radius:6px; font-size:13px; font-weight:600; cursor:pointer; background:transparent; color:var(--slate-500); transition:.15s; }
+.nav button.active { background:#fff; color:var(--navy); box-shadow: var(--shadow); }
+.nav button:hover:not(.active) { color:var(--slate-700); }
+
+/* ── Main ── */
+.main { max-width:1400px; margin:0 auto; padding:20px 32px 60px; }
+.view { display:none; }
+.view.active { display:block; }
+
+/* ── Cards ── */
+.card { background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:24px; margin-bottom:20px; }
+.card-title { font-size:15px; font-weight:700; color:var(--navy); margin-bottom:16px; display:flex; align-items:center; gap:8px; }
+.card-title .icon { width:8px; height:8px; border-radius:50%; }
+
+/* ── Summary Row ── */
+.summary-row { display:grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap:16px; margin-bottom:24px; }
+.stat-card { background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; text-align:center; }
+.stat-card .label { font-size:12px; text-transform:uppercase; letter-spacing:.5px; color:var(--slate-500); font-weight:600; }
+.stat-card .value { font-size:28px; font-weight:800; color:var(--navy); margin-top:4px; }
+.stat-card .sub { font-size:12px; color:var(--slate-400); margin-top:2px; }
+
+/* ── Charts Grid ── */
+.chart-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+.chart-grid.tri { grid-template-columns: 1fr 1fr 1fr; }
+@media(max-width:900px) { .chart-grid, .chart-grid.tri { grid-template-columns:1fr; } }
+.chart-box { position:relative; height:320px; }
+
+/* ── Filter bar ── */
+.filter-bar { display:flex; gap:12px; align-items:center; flex-wrap:wrap; margin-bottom:20px; }
+.filter-bar label { font-size:12px; font-weight:600; color:var(--slate-500); text-transform:uppercase; letter-spacing:.4px; }
+.filter-bar select, .filter-bar input { padding:7px 12px; border:1px solid var(--slate-300); border-radius:6px; font-size:13px; background:#fff; color:var(--slate-700); }
+.pill { display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px; font-size:12px; font-weight:600; }
+.pill.green { background:#d1fae5; color:#065f46; }
+.pill.red { background:#fee2e2; color:#991b1b; }
+.pill.amber { background:#fef3c7; color:#92400e; }
+.pill.blue { background:#dbeafe; color:#1e40af; }
+
+/* ── Table ── */
+.table-wrap { overflow-x:auto; }
+table { width:100%; border-collapse:collapse; font-size:13px; }
+thead th { background:var(--navy); color:#fff; padding:10px 14px; text-align:left; font-weight:600; font-size:12px; text-transform:uppercase; letter-spacing:.3px; cursor:pointer; white-space:nowrap; position:sticky; top:0; }
+thead th:hover { background: var(--navy-light); }
+thead th .sort-arrow { margin-left:4px; opacity:.5; }
+thead th.sorted .sort-arrow { opacity:1; }
+tbody tr { border-bottom:1px solid var(--slate-200); transition:.1s; }
+tbody tr:hover { background:var(--slate-50); }
+tbody td { padding:10px 14px; white-space:nowrap; }
+.num { text-align:right; font-variant-numeric:tabular-nums; }
+.bar-cell { position:relative; }
+.bar-bg { position:absolute; left:0; top:2px; bottom:2px; border-radius:3px; opacity:.15; }
+
+/* ── Company Cards ── */
+.company-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+@media(max-width:900px) { .company-grid { grid-template-columns:1fr; } }
+.co-card { background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); overflow:hidden; }
+.co-header { padding:20px 24px; color:#fff; display:flex; justify-content:space-between; align-items:flex-start; }
+.co-header h3 { font-size:18px; font-weight:700; }
+.co-header .ticker { font-size:24px; font-weight:800; opacity:.3; }
+.co-body { padding:20px 24px; }
+.co-meta { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:16px; }
+.co-meta .item { font-size:12px; }
+.co-meta .item .k { color:var(--slate-400); text-transform:uppercase; letter-spacing:.3px; font-weight:600; }
+.co-meta .item .v { color:var(--slate-800); font-weight:600; margin-top:1px; }
+.kpi-row { display:flex; justify-content:space-between; padding:6px 0; border-bottom:1px solid var(--slate-100); font-size:13px; }
+.kpi-row:last-child { border-bottom:none; }
+.kpi-row .kpi-name { color:var(--slate-500); }
+.kpi-row .kpi-val { font-weight:700; font-variant-numeric:tabular-nums; }
+.section-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--slate-400); margin:14px 0 6px; }
+
+/* ── Tooltip override ── */
+.chartjs-tooltip { font-family:inherit!important; }
+
+/* ── Op KPI Cards ── */
+.opkpi-company { margin-bottom:28px; }
+.opkpi-company-header { display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+.opkpi-company-header .dot { width:12px; height:12px; border-radius:50%; }
+.opkpi-company-header h3 { font-size:16px; font-weight:700; color:var(--navy); }
+.opkpi-company-header .period-tag { font-size:11px; font-weight:600; background:var(--slate-200); color:var(--slate-600); padding:3px 10px; border-radius:12px; margin-left:auto; }
+.opkpi-grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(340px, 1fr)); gap:16px; }
+.opkpi-card { background:#fff; border-radius:var(--radius); box-shadow:var(--shadow); padding:20px; border-left:4px solid var(--slate-300); transition:.15s; }
+.opkpi-card:hover { box-shadow:var(--shadow-lg); transform:translateY(-1px); }
+.opkpi-card .kpi-header { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; }
+.opkpi-card .kpi-name { font-size:14px; font-weight:700; color:var(--navy); }
+.opkpi-card .kpi-value { font-size:22px; font-weight:800; font-variant-numeric:tabular-nums; }
+.opkpi-card .kpi-def { font-size:12px; color:var(--slate-500); line-height:1.6; margin-top:8px; padding-top:8px; border-top:1px solid var(--slate-100); }
+.opkpi-card .kpi-def strong { color:var(--slate-700); }
+.opkpi-card .kpi-context { font-size:11px; color:var(--slate-400); margin-top:6px; font-style:italic; }
+.opkpi-empty { text-align:center; padding:40px; color:var(--slate-400); font-size:14px; }
+
+/* ── Global Slicer ── */
+.global-slicer { display:flex; align-items:center; gap:16px; padding:12px 32px; background:#fff; border-bottom:1px solid var(--slate-200); flex-wrap:wrap; }
+.slicer-group { display:flex; align-items:center; gap:6px; }
+.slicer-group label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--slate-400); }
+.slicer-group select { padding:6px 28px 6px 10px; border:1px solid var(--slate-300); border-radius:6px; font-size:13px; background:#fff; color:var(--slate-700); cursor:pointer; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%2394a3b8'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center; }
+.slicer-group select:focus { outline:none; border-color:var(--blue); box-shadow:0 0 0 2px rgba(59,130,246,.15); }
+.active-filters { display:flex; gap:6px; margin-left:auto; align-items:center; }
+.active-filters .chip { display:inline-flex; align-items:center; gap:4px; padding:4px 10px; border-radius:14px; font-size:11px; font-weight:600; background:var(--blue); color:#fff; cursor:pointer; }
+.active-filters .chip:hover { opacity:.85; }
+.active-filters .chip .x { opacity:.6; font-size:13px; }
+.slicer-count { font-size:12px; color:var(--slate-400); font-weight:600; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div>
+    <h1>IPO MD&A KPI Dashboard</h1>
+    <span id="header-sub">S-1 Filing Analysis — 9 Companies</span>
+  </div>
+  <span style="font-size:12px; opacity:.5">Data sourced from SEC EDGAR S-1 filings</span>
+</div>
+
+<div class="nav" id="nav">
+  <button class="active" data-view="overview">Overview</button>
+  <button data-view="compare">Comparison Charts</button>
+  <button data-view="bench">Benchmarking Table</button>
+  <button data-view="cards">Company Deep Dives</button>
+  <button data-view="opkpis">Operational KPIs</button>
+</div>
+
+<div class="global-slicer" id="global-slicer">
+  <div class="slicer-group">
+    <label>Sector</label>
+    <select id="slicer-sector"><option value="all">All Sectors</option></select>
+  </div>
+  <div class="slicer-group">
+    <label>Sub-Sector</label>
+    <select id="slicer-subsector"><option value="all">All Sub-Sectors</option></select>
+  </div>
+  <div class="slicer-group">
+    <label>IPO Year</label>
+    <select id="slicer-year"><option value="all">All Years</option></select>
+  </div>
+  <div class="active-filters" id="active-filters"></div>
+  <div class="slicer-count" id="slicer-count"></div>
+</div>
+
+<div class="main">
+
+  <!-- ═══ OVERVIEW ═══ -->
+  <div class="view active" id="view-overview">
+    <div class="summary-row" id="summary-row"></div>
+    <div class="chart-grid">
+      <div class="card">
+        <div class="card-title"><span class="icon" style="background:var(--blue)"></span>Revenue at IPO ($M)</div>
+        <div class="chart-box"><canvas id="chart-rev"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon" style="background:var(--green)"></span>Gross Margin (%)</div>
+        <div class="chart-box"><canvas id="chart-gm"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon" style="background:var(--purple)"></span>Revenue YoY Growth (%)</div>
+        <div class="chart-box"><canvas id="chart-growth"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon" style="background:var(--amber)"></span>Adj. EBITDA Margin (%)</div>
+        <div class="chart-box"><canvas id="chart-ebitda"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ COMPARISON ═══ -->
+  <div class="view" id="view-compare">
+    <div class="filter-bar">
+      <label>Period</label>
+      <select id="filter-period"><option value="latest">Most Recent Period</option></select>
+      <label style="margin-left:16px">Metric</label>
+      <select id="filter-metric">
+        <option value="revenue">Revenue ($M)</option>
+        <option value="gross_margin">Gross Margin (%)</option>
+        <option value="operating_margin">Operating Margin (%)</option>
+        <option value="adj_ebitda_margin">Adj. EBITDA Margin (%)</option>
+        <option value="net_margin">Net Margin (%)</option>
+        <option value="revenue_yoy_growth">Revenue YoY Growth (%)</option>
+      </select>
+    </div>
+    <div class="card">
+      <div class="card-title" id="compare-title">Revenue ($M) — Most Recent Period</div>
+      <div class="chart-box" style="height:400px"><canvas id="chart-compare"></canvas></div>
+    </div>
+    <div class="chart-grid" style="margin-top:20px">
+      <div class="card">
+        <div class="card-title"><span class="icon" style="background:var(--blue)"></span>Revenue Trajectory ($M)</div>
+        <div class="chart-box"><canvas id="chart-rev-trend"></canvas></div>
+      </div>
+      <div class="card">
+        <div class="card-title"><span class="icon" style="background:var(--green)"></span>Margin Comparison — Latest Period</div>
+        <div class="chart-box"><canvas id="chart-margins"></canvas></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ BENCHMARKING TABLE ═══ -->
+  <div class="view" id="view-bench">
+    <div class="filter-bar">
+      <label>Sector</label>
+      <select id="bench-sector"><option value="all">All Sectors</option></select>
+      <label style="margin-left:16px">Search</label>
+      <input type="text" id="bench-search" placeholder="Filter by company...">
+    </div>
+    <div class="card" style="padding:0; overflow:hidden">
+      <div class="table-wrap">
+        <table id="bench-table">
+          <thead><tr id="bench-head"></tr></thead>
+          <tbody id="bench-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══ COMPANY DEEP DIVES ═══ -->
+  <div class="view" id="view-cards">
+    <div class="filter-bar">
+      <label>Company</label>
+      <select id="card-filter"><option value="all">All Companies</option></select>
+    </div>
+    <div class="company-grid" id="company-grid"></div>
+  </div>
+
+  <!-- ═══ OPERATIONAL KPIs ═══ -->
+  <div class="view" id="view-opkpis">
+    <div class="filter-bar">
+      <label>Company</label>
+      <select id="opkpi-co-filter"><option value="all">All Companies</option></select>
+    </div>
+    <div id="opkpi-cards"></div>
+  </div>
+
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════════════
+// EMBEDDED DATA
+// ═══════════════════════════════════════════════════════════
+const COMPANIES = [
+  {
+    id:"NIQ", name:"NIQ Global Intelligence plc", ticker:"NIQ", sector:"Business Services",
+    sub:"Market Research & Consumer Intelligence", exchange:"NYSE", ipo_date:"2025-07-23",
+    ipo_price:21, ipo_val:6350, hq:"Chicago, IL / Dublin, Ireland", color:"#3b82f6",
+    underwriters:"Goldman Sachs, J.P. Morgan, Evercore ISI",
+    s1_url:"https://www.sec.gov/Archives/edgar/data/2054696/000119312525151230/d893022ds1.htm",
+    notes:"World's leading consumer intelligence company; covers 85% of global consumer spending in 90+ countries"
+  },
+  {
+    id:"KVYO", name:"Klaviyo, Inc.", ticker:"KVYO", sector:"Technology",
+    sub:"SaaS - Marketing Automation", exchange:"NYSE", ipo_date:"2023-09-20",
+    ipo_price:30, ipo_val:9200, hq:"Boston, MA", color:"#8b5cf6",
+    underwriters:"Goldman Sachs, Morgan Stanley, Citigroup",
+    s1_url:"https://www.sec.gov/Archives/edgar/data/1835830/000162828023030618/klaviyoincs-1.htm",
+    notes:"Marketing automation platform focused on email/SMS; 143K+ customers across 80+ countries"
+  },
+  {
+    id:"RDDT", name:"Reddit, Inc.", ticker:"RDDT", sector:"Technology",
+    sub:"Social Media / Content Platform", exchange:"NYSE", ipo_date:"2024-03-21",
+    ipo_price:34, ipo_val:9500, hq:"San Francisco, CA", color:"#ef4444",
+    underwriters:"Morgan Stanley, Goldman Sachs, JPMorgan, BofA",
+    s1_url:"https://www.sec.gov/Archives/edgar/data/1713445/000162828024006294/reddits-1q423.htm",
+    notes:"Community-driven social platform; 1B+ MAU; 98% revenue from advertising"
+  },
+  {
+    id:"CART", name:"Maplebear Inc. (Instacart)", ticker:"CART", sector:"Technology",
+    sub:"E-Commerce / Marketplace", exchange:"NASDAQ", ipo_date:"2023-09-19",
+    ipo_price:30, ipo_val:10000, hq:"San Francisco, CA", color:"#10b981",
+    underwriters:"Goldman Sachs, J.P. Morgan, BofA, Barclays, Citigroup",
+    s1_url:"https://www.sec.gov/Archives/edgar/data/1579091/000119312523221345/d55348ds1.htm",
+    notes:"Grocery delivery marketplace; $28.8B GMV; 262M orders; US & Canada"
+  },
+  {
+    id:"RBRK", name:"Rubrik, Inc.", ticker:"RBRK", sector:"Technology",
+    sub:"Cybersecurity / Data Protection", exchange:"NYSE", ipo_date:"2024-04-25",
+    ipo_price:32, ipo_val:5600, hq:"Palo Alto, CA", color:"#f59e0b",
+    underwriters:"Goldman Sachs, Barclays, Citigroup, Wells Fargo",
+    s1_url:"https://www.sec.gov/Archives/edgar/data/1943896/000119312524083525/d359771ds1.htm",
+    notes:"Zero Trust Data Security; subscription ARR $784M growing 47% YoY; 6,100+ customers across 23 countries"
+  },
+  {
+    id:"CAVA", name:"CAVA Group, Inc.", ticker:"CAVA", sector:"Consumer Discretionary",
+    sub:"Restaurants", exchange:"NYSE", ipo_date:"2023-06-15",
+    ipo_price:22, ipo_val:2450, hq:"Washington, DC", color:"#e85d04",
+    underwriters:"J.P. Morgan, Jefferies, Citigroup, Morgan Stanley",
+    s1_url:"https://www.sec.gov/Archives/edgar/data/1639438/000162828023018945/cava-sx1.htm",
+    notes:"Fast-casual Mediterranean restaurant chain; 263 locations at IPO; 28.4% same-restaurant sales growth"
+  },
+  {
+    id:"ARM", name:"Arm Holdings plc", ticker:"ARM", sector:"Technology",
+    sub:"Semiconductor IP Licensing", exchange:"NASDAQ", ipo_date:"2023-09-14",
+    ipo_price:51, ipo_val:54500, hq:"Cambridge, England", color:"#06b6d4",
+    underwriters:"Barclays, Goldman Sachs, J.P. Morgan, Mizuho",
+    s1_url:"https://www.sec.gov/Archives/edgar/data/1973239/000119312523228059/d393891df1a.htm",
+    notes:"Semiconductor IP licensing; designs in 99% of smartphones; 30.6B chips shipped in CY2022; royalty + license model"
+  },
+  {
+    id:"VIK", name:"Viking Holdings Ltd", ticker:"VIK", sector:"Consumer Discretionary",
+    sub:"Travel & Leisure / Cruise Lines", exchange:"NYSE", ipo_date:"2024-05-01",
+    ipo_price:24, ipo_val:10400, hq:"Basel, Switzerland", color:"#0369a1",
+    underwriters:"BofA Securities, J.P. Morgan, UBS, Wells Fargo",
+    s1_url:"https://www.sec.gov/Archives/edgar/data/1745201/000119312524103766/d496227df1a.htm",
+    notes:"Premium river and ocean cruise line; 92 vessels; 455K+ guests in 2023; Adjusted EBITDA $1.1B"
+  },
+  {
+    id:"BIRK", name:"Birkenstock Holding plc", ticker:"BIRK", sector:"Consumer Discretionary",
+    sub:"Footwear / Apparel", exchange:"NYSE", ipo_date:"2023-10-11",
+    ipo_price:46, ipo_val:8640, hq:"London, UK (operations in Germany)", color:"#854d0e",
+    underwriters:"Goldman Sachs, J.P. Morgan, Morgan Stanley",
+    s1_url:"https://www.sec.gov/Archives/edgar/data/1977102/000119312523248061/d507917df1a.htm",
+    notes:"Iconic footwear brand est. 1774; 62% gross margin; DTC 38% of revenue; 6,000+ wholesale partners in 75+ countries"
+  }
+];
+
+const FINANCIAL = [
+  {id:"NIQ",period:"FY2023",revenue:3341.3,cost_rev:1511.5,gross_profit:1829.8,gross_margin:54.8,total_opex:1894.9,operating_income:-65.1,operating_margin:-1.9,adj_ebitda:595.9,adj_ebitda_margin:17.8,net_income:-476.2,net_margin:-14.3,revenue_yoy_growth:null,fcf:null},
+  {id:"NIQ",period:"FY2024",revenue:3972.6,cost_rev:1771.6,gross_profit:2201.0,gross_margin:55.4,total_opex:2171.0,operating_income:30.0,operating_margin:0.8,adj_ebitda:740.7,adj_ebitda_margin:18.6,net_income:-722.7,net_margin:-18.2,revenue_yoy_growth:18.9,fcf:null},
+  {id:"KVYO",period:"FY2022",revenue:472.7,cost_rev:126.9,gross_profit:345.8,gross_margin:73.2,total_opex:null,operating_income:-55.0,operating_margin:-11.6,adj_ebitda:null,adj_ebitda_margin:null,net_income:-55.0,net_margin:-11.6,revenue_yoy_growth:null,fcf:null},
+  {id:"KVYO",period:"FY2023",revenue:698.1,cost_rev:177.9,gross_profit:520.2,gross_margin:74.5,total_opex:null,operating_income:-330.6,operating_margin:-47.4,adj_ebitda:78.1,adj_ebitda_margin:11.2,net_income:-330.6,net_margin:-47.4,revenue_yoy_growth:47.7,fcf:null},
+  {id:"RDDT",period:"FY2022",revenue:666.7,cost_rev:106.7,gross_profit:560.0,gross_margin:84.0,total_opex:null,operating_income:-151.2,operating_margin:-22.7,adj_ebitda:-108.4,adj_ebitda_margin:-16.3,net_income:-158.6,net_margin:-23.8,revenue_yoy_growth:null,fcf:null},
+  {id:"RDDT",period:"FY2023",revenue:804.0,cost_rev:111.2,gross_profit:692.8,gross_margin:86.2,total_opex:null,operating_income:-140.2,operating_margin:-17.4,adj_ebitda:-69.3,adj_ebitda_margin:-8.6,net_income:-90.8,net_margin:-11.3,revenue_yoy_growth:20.6,fcf:null},
+  {id:"CART",period:"FY2022",revenue:2500.0,cost_rev:null,gross_profit:null,gross_margin:72.0,total_opex:null,operating_income:62.0,operating_margin:2.5,adj_ebitda:null,adj_ebitda_margin:null,net_income:null,net_margin:null,revenue_yoy_growth:39.0,fcf:null},
+  {id:"CART",period:"H1 2023",revenue:1480.0,cost_rev:null,gross_profit:null,gross_margin:72.0,total_opex:null,operating_income:null,operating_margin:null,adj_ebitda:235.0,adj_ebitda_margin:15.9,net_income:null,net_margin:null,revenue_yoy_growth:null,fcf:242.0},
+  {id:"RBRK",period:"FY2023",revenue:599.8,cost_rev:145.0,gross_profit:454.8,gross_margin:75.8,total_opex:null,operating_income:-277.7,operating_margin:-46.3,adj_ebitda:null,adj_ebitda_margin:null,net_income:-277.7,net_margin:-46.3,revenue_yoy_growth:null,fcf:null},
+  {id:"RBRK",period:"FY2024",revenue:627.9,cost_rev:146.0,gross_profit:481.9,gross_margin:76.9,total_opex:null,operating_income:-354.2,operating_margin:-56.4,adj_ebitda:null,adj_ebitda_margin:null,net_income:-354.2,net_margin:-56.4,revenue_yoy_growth:4.7,fcf:null},
+  {id:"CAVA",period:"FY2021",revenue:500.1,cost_rev:417.9,gross_profit:82.2,gross_margin:16.4,total_opex:null,operating_income:-27.2,operating_margin:-5.4,adj_ebitda:14.6,adj_ebitda_margin:2.9,net_income:-37.4,net_margin:-7.5,revenue_yoy_growth:null,fcf:null},
+  {id:"CAVA",period:"FY2022",revenue:564.1,cost_rev:466.1,gross_profit:98.0,gross_margin:17.4,total_opex:null,operating_income:-14.8,operating_margin:-2.6,adj_ebitda:12.6,adj_ebitda_margin:2.2,net_income:-59.0,net_margin:-10.5,revenue_yoy_growth:12.8,fcf:null},
+  {id:"ARM",period:"FY2022",revenue:2703.0,cost_rev:131.0,gross_profit:2572.0,gross_margin:95.2,total_opex:null,operating_income:678.0,operating_margin:25.1,adj_ebitda:null,adj_ebitda_margin:null,net_income:549.0,net_margin:20.3,revenue_yoy_growth:33.4,fcf:null},
+  {id:"ARM",period:"FY2023",revenue:2679.0,cost_rev:106.0,gross_profit:2573.0,gross_margin:96.0,total_opex:null,operating_income:671.0,operating_margin:25.0,adj_ebitda:null,adj_ebitda_margin:null,net_income:524.0,net_margin:19.5,revenue_yoy_growth:-0.9,fcf:null},
+  {id:"VIK",period:"FY2022",revenue:3176.0,cost_rev:null,gross_profit:null,gross_margin:null,total_opex:null,operating_income:1075.1,operating_margin:33.8,adj_ebitda:null,adj_ebitda_margin:null,net_income:398.5,net_margin:12.5,revenue_yoy_growth:null,fcf:null},
+  {id:"VIK",period:"FY2023",revenue:4710.5,cost_rev:null,gross_profit:null,gross_margin:null,total_opex:null,operating_income:1371.9,operating_margin:29.1,adj_ebitda:1090.3,adj_ebitda_margin:23.1,net_income:-1858.6,net_margin:-39.5,revenue_yoy_growth:48.3,fcf:null},
+  {id:"BIRK",period:"FY2022",revenue:1342.0,cost_rev:532.0,gross_profit:810.0,gross_margin:60.3,total_opex:null,operating_income:595.0,operating_margin:44.3,adj_ebitda:null,adj_ebitda_margin:null,net_income:202.0,net_margin:15.1,revenue_yoy_growth:null,fcf:null},
+  {id:"BIRK",period:"FY2023",revenue:1611.0,cost_rev:611.0,gross_profit:1000.0,gross_margin:62.1,total_opex:null,operating_income:601.0,operating_margin:37.3,adj_ebitda:null,adj_ebitda_margin:null,net_income:81.0,net_margin:5.0,revenue_yoy_growth:20.0,fcf:null}
+];
+
+const OPERATIONAL = [
+  {id:"NIQ",period:"FY2024",nrr:104,customers:null,arr:null,dau:null,mau:null,gmv:null,take_rate:null,employees:null,extra:"80% recurring revenue; 85% global consumer spend coverage; 90+ countries; NPS 45"},
+  {id:"KVYO",period:"FY2023",nrr:117,customers:143000,arr:null,dau:null,mau:null,gmv:null,take_rate:null,employees:2368,extra:"1,958 customers >$50K ARR (+80% YoY); 80+ countries"},
+  {id:"RDDT",period:"FY2023",nrr:null,customers:null,arr:null,dau:73.1,mau:1000,gmv:null,take_rate:null,employees:null,extra:"DAU/MAU ~7.3%; 13 global locations; 98% ad revenue"},
+  {id:"CART",period:"H1 2023",nrr:null,customers:null,arr:null,dau:null,mau:null,gmv:29400,take_rate:10.1,employees:3265,extra:"7.7M monthly active orderers; Instacart+ 5.1M members; avg spend $317/mo"},
+  {id:"RBRK",period:"FY2024",nrr:133,customers:6100,arr:784,dau:null,mau:null,gmv:null,take_rate:null,employees:3100,extra:"Sub ARR $784M (+47% YoY); 91% subscription revenue; avg ACV ~$129K; 23 countries"},
+  {id:"CAVA",period:"FY2022",nrr:null,customers:null,arr:null,dau:null,mau:null,gmv:null,take_rate:null,employees:null,extra:"263 restaurants; AUV $2.6M; 28.4% same-restaurant sales growth; 20.3% restaurant-level profit margin; 35% digital revenue mix"},
+  {id:"ARM",period:"FY2023",nrr:null,customers:null,arr:null,dau:null,mau:null,gmv:null,take_rate:null,employees:5963,extra:"30.6B chips shipped (CY2022); ~$1.7B ACV; 96% gross margin; royalty + license model; 99% of smartphones use Arm designs"},
+  {id:"VIK",period:"FY2023",nrr:null,customers:null,arr:null,dau:null,mau:null,gmv:null,take_rate:null,employees:null,extra:"455K+ guests; 92 vessels; 95.6% occupancy; Net Yield $394/PCD; Adjusted EBITDA $1.09B"},
+  {id:"BIRK",period:"FY2023",nrr:null,customers:null,arr:null,dau:null,mau:null,gmv:null,take_rate:null,employees:null,extra:"~33M pairs sold; ASP €45+; DTC 38% of revenue; 6,000+ wholesale partners; 75+ countries"}
+];
+
+// ═══ HELPERS ═══
+const fmt = (v, type='num') => {
+  if(v===null||v===undefined) return '—';
+  if(type==='$') return '$'+v.toLocaleString('en-US',{minimumFractionDigits:1,maximumFractionDigits:1})+'M';
+  if(type==='$B') return '$'+(v/1000).toFixed(1)+'B';
+  if(type==='%') return v.toFixed(1)+'%';
+  if(type==='#') return v.toLocaleString('en-US');
+  return v.toLocaleString('en-US',{maximumFractionDigits:1});
+};
+const co = id => COMPANIES.find(c=>c.id===id);
+const latestFin = id => {
+  const rows = FINANCIAL.filter(f=>f.id===id);
+  return rows[rows.length-1];
+};
+const latestOps = id => OPERATIONAL.find(o=>o.id===id);
+
+// Chart.js defaults
+Chart.defaults.font.family = "-apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.plugins.legend.display = false;
+const charts = {};
+
+function destroyChart(key) { if(charts[key]) { charts[key].destroy(); delete charts[key]; } }
+
+// ═══ GLOBAL SECTOR/SUB-SECTOR SLICER ═══
+function getFilteredCompanies() {
+  const sector = document.getElementById('slicer-sector').value;
+  const sub = document.getElementById('slicer-subsector').value;
+  const year = document.getElementById('slicer-year').value;
+  let filtered = COMPANIES;
+  if (sector !== 'all') filtered = filtered.filter(c => c.sector === sector);
+  if (sub !== 'all') filtered = filtered.filter(c => c.sub === sub);
+  if (year !== 'all') filtered = filtered.filter(c => c.ipo_date.startsWith(year));
+  return filtered;
+}
+
+function getFilteredIds() {
+  return new Set(getFilteredCompanies().map(c => c.id));
+}
+
+function populateSlicers() {
+  const sectorSel = document.getElementById('slicer-sector');
+  const subSel = document.getElementById('slicer-subsector');
+  const yearSel = document.getElementById('slicer-year');
+  const sectors = [...new Set(COMPANIES.map(c => c.sector))].sort();
+  const subs = [...new Set(COMPANIES.map(c => c.sub))].sort();
+  const years = [...new Set(COMPANIES.map(c => c.ipo_date.slice(0,4)))].sort().reverse();
+  sectorSel.innerHTML = '<option value="all">All Sectors</option>' + sectors.map(s => `<option value="${s}">${s}</option>`).join('');
+  subSel.innerHTML = '<option value="all">All Sub-Sectors</option>' + subs.map(s => `<option value="${s}">${s}</option>`).join('');
+  yearSel.innerHTML = '<option value="all">All Years</option>' + years.map(y => `<option value="${y}">${y}</option>`).join('');
+}
+
+function updateSubSectorOptions() {
+  const sector = document.getElementById('slicer-sector').value;
+  const subSel = document.getElementById('slicer-subsector');
+  const relevantSubs = sector === 'all'
+    ? [...new Set(COMPANIES.map(c => c.sub))].sort()
+    : [...new Set(COMPANIES.filter(c => c.sector === sector).map(c => c.sub))].sort();
+  subSel.innerHTML = '<option value="all">All Sub-Sectors</option>' + relevantSubs.map(s => `<option value="${s}">${s}</option>`).join('');
+}
+
+function updateSlicerUI() {
+  const sector = document.getElementById('slicer-sector').value;
+  const sub = document.getElementById('slicer-subsector').value;
+  const year = document.getElementById('slicer-year').value;
+  const chips = document.getElementById('active-filters');
+  const count = document.getElementById('slicer-count');
+  const filtered = getFilteredCompanies();
+
+  let html = '';
+  if (sector !== 'all') html += `<span class="chip" onclick="document.getElementById('slicer-sector').value='all';onSlicerChange()">${sector} <span class="x">✕</span></span>`;
+  if (sub !== 'all') html += `<span class="chip" style="background:var(--purple)" onclick="document.getElementById('slicer-subsector').value='all';onSlicerChange()">${sub} <span class="x">✕</span></span>`;
+  if (year !== 'all') html += `<span class="chip" style="background:var(--amber)" onclick="document.getElementById('slicer-year').value='all';onSlicerChange()">IPO ${year} <span class="x">✕</span></span>`;
+  chips.innerHTML = html;
+  count.textContent = `Showing ${filtered.length} of ${COMPANIES.length} companies`;
+}
+
+function onSlicerChange() {
+  updateSubSectorOptions();
+  updateSlicerUI();
+  if (typeof updateCompanyFilters === 'function') updateCompanyFilters();
+  renderAll();
+}
+
+function renderAll() {
+  renderOverview();
+  renderCompare();
+  renderBench();
+  renderCards();
+  renderOpKpis();
+}
+
+populateSlicers();
+document.getElementById('slicer-sector').addEventListener('change', onSlicerChange);
+document.getElementById('slicer-subsector').addEventListener('change', onSlicerChange);
+document.getElementById('slicer-year').addEventListener('change', onSlicerChange);
+updateSlicerUI();
+
+// ═══ NAV ═══
+document.querySelectorAll('.nav button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+    document.getElementById('view-'+btn.dataset.view).classList.add('active');
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+// VIEW 1: OVERVIEW
+// ═══════════════════════════════════════════════════════════
+function renderOverview() {
+  const filtered = getFilteredCompanies();
+  const ids = getFilteredIds();
+  const filteredFin = FINANCIAL.filter(f => ids.has(f.id));
+  const filteredOps = OPERATIONAL.filter(o => ids.has(o.id));
+  const colors = filtered.map(c => c.color);
+
+  const sums = document.getElementById('summary-row');
+  const maxRevEntry = filteredFin.filter(f=>f.period.includes('FY')).reduce((best,f) => (!best || (f.revenue||0) > (best.revenue||0)) ? f : best, null);
+  const maxRev = maxRevEntry ? maxRevEntry.revenue : 0;
+  const maxRevCo = maxRevEntry ? co(maxRevEntry.id) : null;
+  const avgGM = filtered.map(c=>latestFin(c.id)?.gross_margin).filter(Boolean);
+  const avgGMVal = avgGM.length ? avgGM.reduce((a,b)=>a+b,0)/avgGM.length : 0;
+  const nrrEntries = filteredOps.filter(o=>o.nrr).sort((a,b)=>(b.nrr||0)-(a.nrr||0));
+  const bestNRR = nrrEntries[0];
+  const bestNRRLabel = bestNRR ? `${co(bestNRR.id)?.ticker} ${bestNRR.period}` : '—';
+
+  sums.innerHTML = `
+    <div class="stat-card"><div class="label">Companies</div><div class="value">${filtered.length}</div><div class="sub">S-1 filings analyzed</div></div>
+    <div class="stat-card"><div class="label">Largest Revenue</div><div class="value">${fmt(maxRev,'$')}</div><div class="sub">${maxRevCo ? maxRevCo.ticker+' '+maxRevEntry.period : '—'}</div></div>
+    <div class="stat-card"><div class="label">Avg Gross Margin</div><div class="value">${avgGMVal.toFixed(1)}%</div><div class="sub">Across latest periods</div></div>
+    <div class="stat-card"><div class="label">Highest NRR</div><div class="value">${bestNRR ? bestNRR.nrr+'%' : '—'}</div><div class="sub">${bestNRRLabel}</div></div>
+    <div class="stat-card"><div class="label">Total KPI Data Points</div><div class="value">${filteredFin.length + filteredOps.length}</div><div class="sub">Financial + Operational</div></div>
+  `;
+
+  // Revenue chart
+  destroyChart('rev');
+  charts.rev = new Chart(document.getElementById('chart-rev'), {
+    type:'bar',
+    data: {
+      labels: filtered.map(c=>c.ticker),
+      datasets: [{
+        data: filtered.map(c=>latestFin(c.id)?.revenue),
+        backgroundColor: colors,
+        borderRadius: 6,
+        barPercentage:.6
+      }]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales: { y: { beginAtZero:true, ticks:{ callback:v=>'$'+v.toLocaleString()+'M' }, grid:{color:'#f1f5f9'} }, x:{grid:{display:false}} },
+      plugins: { tooltip: { callbacks: { label: ctx=>fmt(ctx.raw,'$') } } }
+    }
+  });
+
+  // Gross Margin chart
+  destroyChart('gm');
+  charts.gm = new Chart(document.getElementById('chart-gm'), {
+    type:'bar',
+    data: {
+      labels: filtered.map(c=>c.ticker),
+      datasets: [{
+        data: filtered.map(c=>latestFin(c.id)?.gross_margin),
+        backgroundColor: colors,
+        borderRadius: 6,
+        barPercentage:.6
+      }]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales: { y: { beginAtZero:true, max:100, ticks:{ callback:v=>v+'%' }, grid:{color:'#f1f5f9'} }, x:{grid:{display:false}} },
+      plugins: { tooltip: { callbacks: { label: ctx=>fmt(ctx.raw,'%') } } }
+    }
+  });
+
+  // Growth chart
+  destroyChart('growth');
+  const growthData = filtered.map(c=>latestFin(c.id)?.revenue_yoy_growth);
+  charts.growth = new Chart(document.getElementById('chart-growth'), {
+    type:'bar',
+    data: {
+      labels: filtered.map(c=>c.ticker),
+      datasets: [{
+        data: growthData,
+        backgroundColor: growthData.map(v=>v===null||v===undefined?'#e2e8f0':v>=20?'#10b981':v>=10?'#f59e0b':'#ef4444'),
+        borderRadius: 6,
+        barPercentage:.6
+      }]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales: { y: { ticks:{ callback:v=>v+'%' }, grid:{color:'#f1f5f9'} }, x:{grid:{display:false}} },
+      plugins: { tooltip: { callbacks: { label: ctx=>ctx.raw===null?'N/A':fmt(ctx.raw,'%') } } }
+    }
+  });
+
+  // EBITDA margin chart
+  destroyChart('ebitda');
+  const ebitdaData = filtered.map(c=>latestFin(c.id)?.adj_ebitda_margin);
+  charts.ebitda = new Chart(document.getElementById('chart-ebitda'), {
+    type:'bar',
+    data: {
+      labels: filtered.map(c=>c.ticker),
+      datasets: [{
+        data: ebitdaData,
+        backgroundColor: ebitdaData.map(v=>v===null||v===undefined?'#e2e8f0':v>=0?'#10b981':'#ef4444'),
+        borderRadius: 6,
+        barPercentage:.6
+      }]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      scales: { y: { ticks:{ callback:v=>v+'%' }, grid:{color:'#f1f5f9'} }, x:{grid:{display:false}} },
+      plugins: { tooltip: { callbacks: { label: ctx=>ctx.raw===null?'N/A':fmt(ctx.raw,'%') } } }
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════════════════
+// VIEW 2: COMPARISON CHARTS
+// ═══════════════════════════════════════════════════════════
+function renderCompare() {
+  const filtered = getFilteredCompanies();
+  const ids = getFilteredIds();
+  const colors = filtered.map(c => c.color);
+  const metricSel = document.getElementById('filter-metric');
+  const metric = metricSel.value;
+  const metricLabel = metricSel.options[metricSel.selectedIndex].text;
+  document.getElementById('compare-title').textContent = metricLabel + ' — Most Recent Period';
+
+  destroyChart('compare');
+  const data = filtered.map(c => {
+    const f = latestFin(c.id);
+    return f ? f[metric] : null;
+  });
+  const isPct = metric.includes('margin') || metric.includes('growth');
+  charts.compare = new Chart(document.getElementById('chart-compare'), {
+    type:'bar',
+    data: {
+      labels: filtered.map(c=>c.name.length>25 ? c.ticker : c.name),
+      datasets:[{
+        data,
+        backgroundColor: colors,
+        borderRadius:8,
+        barPercentage:.5
+      }]
+    },
+    options: { indexAxis:'y', responsive:true, maintainAspectRatio:false,
+      scales: { x: { ticks:{ callback: v => isPct ? v+'%' : '$'+v.toLocaleString()+'M' }, grid:{color:'#f1f5f9'} }, y:{grid:{display:false}} },
+      plugins: { tooltip:{ callbacks:{ label: ctx => ctx.raw===null?'N/A': isPct ? fmt(ctx.raw,'%') : fmt(ctx.raw,'$') } } }
+    }
+  });
+
+  // Revenue trend
+  destroyChart('revTrend');
+  const filteredFin = FINANCIAL.filter(f => ids.has(f.id));
+  const datasets = filtered.map(c => {
+    const rows = filteredFin.filter(f=>f.id===c.id);
+    return {
+      label: c.ticker,
+      data: rows.map(r=>({x:r.period, y:r.revenue})),
+      borderColor: c.color,
+      backgroundColor: c.color+'22',
+      borderWidth:2.5,
+      pointRadius:5,
+      pointBackgroundColor: c.color,
+      tension:.3,
+      fill:false
+    };
+  });
+  const allPeriods = [...new Set(filteredFin.map(f=>f.period))];
+  charts.revTrend = new Chart(document.getElementById('chart-rev-trend'), {
+    type:'line',
+    data: { labels: allPeriods, datasets },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins: { legend: { display:true, position:'bottom', labels:{boxWidth:12,padding:12} },
+        tooltip: { callbacks: { label: ctx => ctx.dataset.label+': '+fmt(ctx.raw.y||ctx.raw,'$') } }
+      },
+      scales: { y:{ ticks:{ callback:v=>'$'+v.toLocaleString()+'M' }, grid:{color:'#f1f5f9'} }, x:{grid:{display:false}} }
+    }
+  });
+
+  // Margins comparison (grouped bar)
+  destroyChart('margins');
+  charts.margins = new Chart(document.getElementById('chart-margins'), {
+    type:'bar',
+    data: {
+      labels: filtered.map(c=>c.ticker),
+      datasets: [
+        { label:'Gross Margin', data: filtered.map(c=>latestFin(c.id)?.gross_margin), backgroundColor:'#3b82f6', borderRadius:4, barPercentage:.8, categoryPercentage:.7 },
+        { label:'Operating Margin', data: filtered.map(c=>latestFin(c.id)?.operating_margin), backgroundColor:'#8b5cf6', borderRadius:4, barPercentage:.8, categoryPercentage:.7 },
+        { label:'Net Margin', data: filtered.map(c=>latestFin(c.id)?.net_margin), backgroundColor:'#ef4444', borderRadius:4, barPercentage:.8, categoryPercentage:.7 }
+      ]
+    },
+    options: { responsive:true, maintainAspectRatio:false,
+      plugins: { legend:{ display:true, position:'bottom', labels:{boxWidth:12,padding:12} },
+        tooltip:{ callbacks:{ label:ctx=>ctx.dataset.label+': '+(ctx.raw===null?'N/A':fmt(ctx.raw,'%')) } }
+      },
+      scales: { y:{ ticks:{ callback:v=>v+'%' }, grid:{color:'#f1f5f9'} }, x:{grid:{display:false}} }
+    }
+  });
+}
+
+document.getElementById('filter-metric').addEventListener('change', renderCompare);
+
+// ═══════════════════════════════════════════════════════════
+// VIEW 3: BENCHMARKING TABLE
+// ═══════════════════════════════════════════════════════════
+const BENCH_COLS = [
+  {key:'ticker',label:'Ticker',type:'text'},
+  {key:'name',label:'Company',type:'text'},
+  {key:'sector',label:'Sector',type:'text'},
+  {key:'ipo_date',label:'IPO Date',type:'text'},
+  {key:'revenue',label:'Revenue ($M)',type:'$'},
+  {key:'revenue_yoy_growth',label:'Rev Growth',type:'%'},
+  {key:'gross_margin',label:'Gross Margin',type:'%'},
+  {key:'operating_margin',label:'Op Margin',type:'%'},
+  {key:'adj_ebitda_margin',label:'EBITDA Margin',type:'%'},
+  {key:'net_margin',label:'Net Margin',type:'%'},
+  {key:'nrr',label:'NRR',type:'%'},
+  {key:'customers',label:'Customers',type:'#'},
+  {key:'ipo_val',label:'IPO Val ($M)',type:'$'},
+];
+
+let sortCol = 'revenue';
+let sortDir = -1;
+
+function buildBenchData() {
+  const filtered = getFilteredCompanies();
+  return filtered.map(c => {
+    const f = latestFin(c.id) || {};
+    const o = latestOps(c.id) || {};
+    return { ...c, ...f, nrr:o.nrr, customers:o.customers, arr:o.arr };
+  });
+}
+
+function renderBench() {
+  const head = document.getElementById('bench-head');
+  head.innerHTML = BENCH_COLS.map(col =>
+    `<th data-key="${col.key}" class="${col.key===sortCol?'sorted':''}" onclick="sortBench('${col.key}')">${col.label}<span class="sort-arrow">${col.key===sortCol?(sortDir>0?'▲':'▼'):''}</span></th>`
+  ).join('');
+
+  let data = buildBenchData();
+  const search = document.getElementById('bench-search').value.toLowerCase();
+  const sector = document.getElementById('bench-sector').value;
+  if(search) data = data.filter(d => d.name.toLowerCase().includes(search) || d.ticker.toLowerCase().includes(search));
+  if(sector!=='all') data = data.filter(d => d.sector===sector);
+  data.sort((a,b) => {
+    const va = a[sortCol], vb = b[sortCol];
+    if(va===null||va===undefined) return 1;
+    if(vb===null||vb===undefined) return -1;
+    return (va>vb?1:va<vb?-1:0)*sortDir;
+  });
+
+  const maxes = {};
+  BENCH_COLS.filter(c=>c.type==='$'||c.type==='%'||c.type==='#').forEach(col => {
+    maxes[col.key] = Math.max(...data.map(d=>Math.abs(d[col.key]||0)));
+  });
+
+  const body = document.getElementById('bench-body');
+  body.innerHTML = data.map(d => {
+    return '<tr>' + BENCH_COLS.map(col => {
+      const v = d[col.key];
+      let cls = col.type!=='text' ? 'num' : '';
+      let content = '';
+      let bar = '';
+      if(col.type==='$') { content = v!==null&&v!==undefined ? '$'+v.toLocaleString('en-US',{maximumFractionDigits:1})+'M' : '—'; }
+      else if(col.type==='%') {
+        content = v!==null&&v!==undefined ? v.toFixed(1)+'%' : '—';
+        if(v!==null&&v!==undefined) {
+          const pct = Math.abs(v)/Math.max(maxes[col.key],1)*100;
+          const barColor = v>=0 ? 'var(--green)' : 'var(--red)';
+          bar = `<div class="bar-bg" style="width:${pct}%;background:${barColor}"></div>`;
+        }
+      }
+      else if(col.type==='#') { content = v!==null&&v!==undefined ? v.toLocaleString('en-US') : '—'; }
+      else { content = v||'—'; }
+      return `<td class="${cls} bar-cell" style="position:relative">${bar}<span style="position:relative">${content}</span></td>`;
+    }).join('') + '</tr>';
+  }).join('');
+}
+
+window.sortBench = function(key) {
+  if(sortCol===key) sortDir *= -1;
+  else { sortCol=key; sortDir=-1; }
+  renderBench();
+};
+document.getElementById('bench-search').addEventListener('input', renderBench);
+document.getElementById('bench-sector').addEventListener('change', renderBench);
+
+// Populate sector filter
+const sectors = [...new Set(COMPANIES.map(c=>c.sector))];
+sectors.forEach(s => {
+  document.getElementById('bench-sector').innerHTML += `<option value="${s}">${s}</option>`;
+});
+
+// ═══════════════════════════════════════════════════════════
+// VIEW 4: COMPANY DEEP DIVES
+// ═══════════════════════════════════════════════════════════
+function renderCards() {
+  const filter = document.getElementById('card-filter').value;
+  const grid = document.getElementById('company-grid');
+  const filtered = getFilteredCompanies();
+  const comps = filter==='all' ? filtered : filtered.filter(c=>c.id===filter);
+
+  grid.innerHTML = comps.map(c => {
+    const fins = FINANCIAL.filter(f=>f.id===c.id);
+    const ops = latestOps(c.id) || {};
+    const latest = latestFin(c.id) || {};
+
+    const finRows = (items) => items.map(([k,v])=>`<div class="kpi-row"><span class="kpi-name">${k}</span><span class="kpi-val">${v}</span></div>`).join('');
+
+    const finPeriods = fins.map(f => {
+      const items = [
+        ['Revenue', fmt(f.revenue,'$')],
+        ['Gross Margin', fmt(f.gross_margin,'%')],
+        ['Operating Margin', fmt(f.operating_margin,'%')],
+        ['Adj. EBITDA', f.adj_ebitda!==null ? fmt(f.adj_ebitda,'$') : '—'],
+        ['Adj. EBITDA Margin', fmt(f.adj_ebitda_margin,'%')],
+        ['Net Income', fmt(f.net_income,'$')],
+        ['Net Margin', fmt(f.net_margin,'%')],
+        ['Rev YoY Growth', fmt(f.revenue_yoy_growth,'%')],
+      ];
+      return `<div class="section-label">${f.period}</div>${finRows(items)}`;
+    }).join('');
+
+    const opsItems = [];
+    if(ops.nrr) opsItems.push(['Net Revenue Retention', fmt(ops.nrr,'%')]);
+    if(ops.arr) opsItems.push(['Subscription ARR', fmt(ops.arr,'$')]);
+    if(ops.customers) opsItems.push(['Customers', fmt(ops.customers,'#')]);
+    if(ops.dau) opsItems.push(['DAU', ops.dau+'M']);
+    if(ops.mau) opsItems.push(['MAU', ops.mau>=1000?(ops.mau/1000)+'B':ops.mau+'M']);
+    if(ops.gmv) opsItems.push(['GMV', '$'+(ops.gmv/1000).toFixed(1)+'B']);
+    if(ops.take_rate) opsItems.push(['Take Rate', fmt(ops.take_rate,'%')]);
+    if(ops.employees) opsItems.push(['Employees', fmt(ops.employees,'#')]);
+
+    const gmPill = latest.gross_margin>=75?'green':latest.gross_margin>=60?'blue':'amber';
+    const revScale = latest.revenue>=1000?fmt(latest.revenue,'$B'):fmt(latest.revenue,'$');
+
+    return `
+    <div class="co-card">
+      <div class="co-header" style="background:linear-gradient(135deg, ${c.color}, ${c.color}cc)">
+        <div>
+          <h3>${c.name}</h3>
+          <div style="font-size:12px;opacity:.8;margin-top:4px">${c.sub}</div>
+        </div>
+        <div class="ticker">${c.ticker}</div>
+      </div>
+      <div class="co-body">
+        <div class="co-meta">
+          <div class="item"><div class="k">IPO Date</div><div class="v">${c.ipo_date}</div></div>
+          <div class="item"><div class="k">IPO Price</div><div class="v">$${c.ipo_price}</div></div>
+          <div class="item"><div class="k">Valuation</div><div class="v">${fmt(c.ipo_val,'$')}</div></div>
+          <div class="item"><div class="k">Exchange</div><div class="v">${c.exchange}</div></div>
+          <div class="item"><div class="k">HQ</div><div class="v">${c.hq}</div></div>
+          <div class="item"><div class="k">Underwriters</div><div class="v" style="font-size:11px">${c.underwriters}</div></div>
+        </div>
+        <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+          <span class="pill blue">Rev: ${revScale}</span>
+          <span class="pill ${gmPill}">GM: ${fmt(latest.gross_margin,'%')}</span>
+          ${latest.adj_ebitda_margin!==null&&latest.adj_ebitda_margin!==undefined?`<span class="pill ${latest.adj_ebitda_margin>=0?'green':'red'}">EBITDA: ${fmt(latest.adj_ebitda_margin,'%')}</span>`:''}
+        </div>
+        <div class="section-label">Financial KPIs</div>
+        ${finPeriods}
+        ${opsItems.length ? `<div class="section-label" style="margin-top:16px">Operational KPIs (${ops.period})</div>${finRows(opsItems)}` : ''}
+        <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--slate-200);font-size:11px;color:var(--slate-400)">
+          ${c.notes}
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Populate company filter (will be refreshed by updateCompanyFilters on slicer change)
+function updateCompanyFilters() {
+  const filtered = getFilteredCompanies();
+  const cardSel = document.getElementById('card-filter');
+  const opSel = document.getElementById('opkpi-co-filter');
+  const cardVal = cardSel.value;
+  const opVal = opSel.value;
+  cardSel.innerHTML = '<option value="all">All Companies</option>' + filtered.map(c => `<option value="${c.id}">${c.ticker} — ${c.name}</option>`).join('');
+  opSel.innerHTML = '<option value="all">All Companies</option>' + filtered.map(c => `<option value="${c.id}">${c.ticker} — ${c.name}</option>`).join('');
+  if (filtered.find(c => c.id === cardVal)) cardSel.value = cardVal; else cardSel.value = 'all';
+  if (filtered.find(c => c.id === opVal)) opSel.value = opVal; else opSel.value = 'all';
+}
+COMPANIES.forEach(c => {
+  document.getElementById('card-filter').innerHTML += `<option value="${c.id}">${c.ticker} — ${c.name}</option>`;
+});
+document.getElementById('card-filter').addEventListener('change', renderCards);
+
+// ═══════════════════════════════════════════════════════════
+// VIEW 5: OPERATIONAL KPIs WITH DEFINITIONS
+// ═══════════════════════════════════════════════════════════
+// ── Company-specific KPI definitions sourced from each company's S-1 filing ──
+const OPKPI_BY_COMPANY = [
+  {
+    id: 'NIQ', period: 'FY2024',
+    kpis: [
+      {
+        name: 'Intelligence Subscription Revenue',
+        value: '$2,660M',
+        color: 'var(--blue)',
+        s1_definition: 'Annualized Revenue from subscription services associated with annual and multi-year contracts, and renewal licensing services within our Intelligence solutions; it excludes contracts and products that are short-term in nature, which we define to mean less than 12 months in duration.',
+        s1_formula: 'Annualized Revenue is the average annualized monthly contract value revenue over the trailing twelve months. Newly acquired client revenue is calculated by (i) annualizing the first month with positive contract value, then (ii) annualizing the monthly average contract value between the second and eleventh months.',
+        context: 'Intelligence Subscription Revenue accounted for 67% of total revenue in FY2024.'
+      },
+      {
+        name: 'Net Dollar Retention (NDR)',
+        value: '106%',
+        color: 'var(--green)',
+        s1_definition: 'The trailing twelve-month Intelligence Subscription Revenue at the end of a given month from clients who were Intelligence Subscription Revenue clients in the corresponding prior-year month divided by the trailing twelve-month Intelligence Subscription Revenue at the end of the prior-year month for these same clients.',
+        s1_formula: 'TTM Intelligence Subscription Revenue (current period, same clients) ÷ TTM Intelligence Subscription Revenue (prior year, same clients)',
+        context: 'NDR improved from approximately 94% in FY2020 to 106% in FY2024, a 12pp improvement over 4 years. Gross dollar retention was 98%.'
+      },
+      {
+        name: 'Recurring Revenue %',
+        value: '~80%',
+        color: 'var(--purple)',
+        s1_definition: 'The share of total revenue that comes from subscription and recurring contractual sources. NIQ describes its revenue model as approximately 80% recurring, driven by long-term subscription contracts across Intelligence solutions.',
+        s1_formula: 'Recurring Revenue ÷ Total Revenue × 100',
+        context: 'Revenue model approximately 80% recurring in FY2024; Intelligence Subscription Revenue had NDR of 106% and GDR of 98%.'
+      }
+    ]
+  },
+  {
+    id: 'KVYO', period: 'FY2023',
+    kpis: [
+      {
+        name: 'Annualized Recurring Revenue (ARR)',
+        value: '$698M+',
+        color: 'var(--purple)',
+        s1_definition: 'For any date of determination, the annualized value of existing paid subscriptions, which we calculate by taking the Monthly Recurring Revenue as of that date of determination and multiplying that Monthly Recurring Revenue by twelve.',
+        s1_formula: 'Monthly Recurring Revenue × 12',
+        context: 'ARR is derived from MRR; excludes non-recurring revenue such as professional services or one-time fees.'
+      },
+      {
+        name: 'Dollar-Based Net Revenue Retention (NRR)',
+        value: '117%',
+        color: 'var(--blue)',
+        s1_definition: 'We calculate our Dollar-Based Net Revenue Retention rate, or NRR, by first identifying the cohort of customers as of twelve months prior to the date of determination. We then calculate the ARR from this customer cohort as of twelve months prior (Prior Period ARR) and the ARR from this customer cohort as of the date of determination (Current Period ARR). Current Period ARR includes any expansion, price increases, and reactivated subscriptions and reflects contraction or attrition, but excludes any ARR from new customers. We then divide Current Period ARR by Prior Period ARR and calculate the weighted average over the prior twelve months.',
+        s1_formula: 'Current Period ARR (existing cohort) ÷ Prior Period ARR (same cohort), weighted average over trailing 12 months',
+        context: 'Down slightly from 119% in FY2022. Notably includes reactivated subscriptions and price increases in expansion.'
+      },
+      {
+        name: 'Number of Customers',
+        value: '143,000',
+        color: 'var(--green)',
+        s1_definition: 'We define a customer as a unique account, typically identified by a unique domain, as of the date of determination that has an active paid subscription. A single organization may have multiple accounts, each of which would be counted as a separate customer. We do not include persons or entities that use our platform on a free trial basis.',
+        s1_formula: 'Count of unique accounts (by domain) with active paid subscriptions',
+        context: 'Total paying customers across 80+ countries; up from 130K in FY2022.'
+      },
+      {
+        name: 'Customers Generating Over $50,000 of ARR',
+        value: '1,958',
+        color: 'var(--purple)',
+        s1_definition: 'We calculate our number of customers generating over $50,000 of ARR as those customers that have an average ARR of greater than $50,000 over the prior twelve months (or the entire duration of the customer\'s paying relationship, if it is less than twelve months) as of the date of determination.',
+        s1_formula: 'Count of accounts with trailing 12-month average ARR > $50,000',
+        context: 'Nearly doubled YoY (+80%) from 1,085 in FY2022. Note: uses 12-month average, not point-in-time ARR.'
+      }
+    ]
+  },
+  {
+    id: 'RDDT', period: 'FY2023',
+    kpis: [
+      {
+        name: 'Daily Active Uniques (DAUq)',
+        value: '73.1M',
+        color: 'var(--red)',
+        s1_definition: 'We define a daily active unique ("DAUq") as a user whom we can identify with a unique identifier who has visited a page on the Reddit website, www.reddit.com, or opened a Reddit application at least once during a 24-hour period. We calculate average DAUq for a particular period by adding the number of DAUq on each day of that period and dividing that sum by the number of days in that period.',
+        s1_formula: 'Sum of daily unique visitors over the period ÷ number of days in the period',
+        context: 'DAUq grew 27% YoY. As Reddit identifies automated agents (web crawlers, scrapers), they are removed prospectively; prior periods are not recalculated if impact is immaterial.'
+      },
+      {
+        name: 'Weekly Active Uniques (WAUq)',
+        value: '267M+',
+        color: 'var(--red)',
+        s1_definition: 'We define a weekly active unique ("WAUq") as a user whom we can identify with a unique identifier who has visited a page on the Reddit website, www.reddit.com, or opened a Reddit application at least once during a trailing seven-day period. We calculate average quarterly WAUq by averaging the WAUq at the end of each week during a particular quarter.',
+        s1_formula: 'Average of end-of-week WAUq across all weeks in the quarter',
+        context: 'Reddit uses WAUq as a complement to DAUq; both include logged-out visitors identified by unique identifiers.'
+      },
+      {
+        name: 'Logged-In DAUq / Total DAUq',
+        value: '~50%',
+        color: 'var(--amber)',
+        s1_definition: 'Reddit separately discloses logged-in DAUq as a subset of total DAUq. Logged-in users are those who have authenticated with a Reddit account. This stickiness ratio indicates the depth of user engagement and is important for ad targeting capabilities.',
+        s1_formula: 'Logged-in DAUq ÷ Total DAUq',
+        context: 'Approximately 50% of DAUq are logged-in users; 98% of revenue comes from advertising, making logged-in ratio important for ad monetization.'
+      }
+    ]
+  },
+  {
+    id: 'CART', period: 'H1 2023',
+    kpis: [
+      {
+        name: 'Orders',
+        value: '262M',
+        color: 'var(--green)',
+        s1_definition: 'We define an order as a completed customer transaction to purchase goods for delivery or pickup from a single retailer on Instacart during the period indicated, including those completed through Instacart Marketplace or retailers\' owned and operated online storefronts that are powered by Instacart Enterprise Platform.',
+        s1_formula: 'Count of completed customer transactions (delivery or pickup) from a single retailer per transaction',
+        context: '261.5M orders in FY2022 (+18% YoY). Notably includes both Marketplace and Enterprise Platform (white-label) orders.'
+      },
+      {
+        name: 'Gross Transaction Value (GTV)',
+        value: '$29.4B',
+        color: 'var(--blue)',
+        s1_definition: 'We define GTV as the value of the products sold based on prices shown on Instacart, in addition to applicable taxes, deposits and other local fees, customer tips (which go directly to shoppers), customer fees (which include flat subscription fees related to Instacart+), retailer fees, alcohol service fees, delivery fees, priority fees, and long-distance service fees, less refunds and credits, for all orders completed during the period indicated.',
+        s1_formula: 'Product value + taxes + deposits + fees + tips − refunds − credits, for all completed orders',
+        context: 'GTV on a TTM basis as of June 2023. Instacart\'s definition notably includes tips and subscription fees in GTV, which inflates the headline number relative to pure product GMV.'
+      },
+      {
+        name: 'Take Rate (Net Revenue / GTV)',
+        value: '10.1%',
+        color: 'var(--amber)',
+        s1_definition: 'Instacart measures take rate as the ratio of net revenue (transaction revenue + advertising and other revenue) to GTV. This reflects the percentage of total transaction value that Instacart captures as revenue after paying retailers and shoppers.',
+        s1_formula: 'Net Revenue ÷ GTV × 100',
+        context: 'Take rate expanded from 8.8% (FY2022) to ~10.1% (H1 2023), a 130bps improvement driven by advertising revenue growth and Instacart+ subscription fee increases.'
+      },
+      {
+        name: 'Monthly Active Orderers',
+        value: '7.7M',
+        color: 'var(--purple)',
+        s1_definition: 'Instacart tracks monthly active orderers as the number of unique customers who completed at least one order on the platform during a given month. This is distinct from registered accounts and reflects actual purchasing activity.',
+        s1_formula: 'Count of unique customers with ≥1 completed order per month',
+        context: 'Average spend per active orderer was approximately $317/month. Instacart+ members (5.1M) represent the highest-frequency cohort.'
+      }
+    ]
+  },
+  {
+    id: 'RBRK', period: 'FY2024',
+    kpis: [
+      {
+        name: 'Subscription Annual Recurring Revenue (ARR)',
+        value: '$784M',
+        color: 'var(--purple)',
+        s1_definition: 'Subscription ARR is calculated as the annualized value of our active subscription contracts as of the measurement date, assuming any contract that expires during the next 12 months is renewed on existing terms. Subscription contracts include offerings for our RSC platform and related SaaS products, term-based licenses for our RSC-Private platform, prior sales of CDM sold as a subscription term-based license with associated support and related SaaS products, and standalone sales of our SaaS subscription products.',
+        s1_formula: 'Annualized value of all active subscription contracts as of measurement date (assuming renewal on existing terms for contracts expiring within 12 months)',
+        context: 'Subscription ARR grew 47% YoY from $533M; subscription revenue now 91% of total (up from 59% in FY2022). Includes both SaaS and term-based license subscriptions.'
+      },
+      {
+        name: 'Avg. Subscription Dollar-Based Net Retention Rate',
+        value: '133%',
+        color: 'var(--blue)',
+        s1_definition: 'We calculate our average subscription dollar-based net retention rate by first identifying subscription customers (Prior Period Subscription Customers) at the end of a particular quarter (Prior Period). We then calculate the Subscription ARR from these Prior Period Subscription Customers at the end of the same quarter of the subsequent year (Current Period). We divide the Current Period Subscription ARR by the Prior Period Subscription ARR to obtain Net Retention for a quarter, then average across four consecutive quarters.',
+        s1_formula: 'Current Period Subscription ARR (same cohort) ÷ Prior Period Subscription ARR, averaged over 4 quarters',
+        context: 'Down from 150% in FY2023. Rubrik\'s methodology averages across 4 quarters to smooth seasonality. Includes expansion from additional data, new applications, and conversion from maintenance to subscription.'
+      },
+      {
+        name: 'Customers with $100,000+ in Subscription ARR',
+        value: '1,742',
+        color: 'var(--green)',
+        s1_definition: 'We believe that customers with $100,000 or more in Subscription ARR are a useful indicator of our penetration with larger customers, which represent a significant portion of our business. We count these as the number of customer accounts with Subscription ARR of $100,000 or more as of the measurement date.',
+        s1_formula: 'Count of customer accounts with Subscription ARR ≥ $100,000 as of period end',
+        context: 'Up 45% YoY from 1,204. Average ACV across all customers was approximately $129K. Note: Rubrik uses $100K threshold vs. Klaviyo\'s $50K — reflects enterprise vs. SMB customer base.'
+      },
+      {
+        name: 'Total Customers',
+        value: '6,100+',
+        color: 'var(--green)',
+        s1_definition: 'Total number of customer accounts with active subscription contracts as of the measurement date. Rubrik serves organizations of all sizes across a wide range of industries and geographies.',
+        s1_formula: 'Count of unique customer accounts with active subscriptions',
+        context: 'Customer count grew 22% YoY from 5,000+; across 23 countries.'
+      }
+    ]
+  },
+  {
+    id: 'CAVA', period: 'FY2022',
+    kpis: [
+      {
+        name: 'CAVA Same Restaurant Sales Growth',
+        value: '28.4%',
+        color: 'var(--green)',
+        s1_definition: 'CAVA Same Restaurant Sales Growth reflects the change in year-over-year revenue for the comparable CAVA restaurant base, which includes restaurants open for at least 13 full fiscal periods. This measure highlights the performance of existing restaurants, while excluding the impact of new restaurant openings.',
+        s1_formula: '(Current period revenue − Prior period revenue) ÷ Prior period revenue, for restaurants open ≥ 13 full fiscal periods',
+        context: 'Q1 2023 showed 28.4% same-restaurant growth driven by traffic increases and menu price adjustments. Note: CAVA uses 13 fiscal periods (not calendar quarters) as the comp threshold.'
+      },
+      {
+        name: 'CAVA AUV (Average Unit Volume)',
+        value: '$2.6M',
+        color: 'var(--blue)',
+        s1_definition: 'CAVA AUV consists of the average annualized revenue of all CAVA restaurants that have been open for at least 12 full fiscal periods as of the end of the most recently completed fiscal quarter.',
+        s1_formula: 'Total annualized revenue of eligible restaurants ÷ Number of eligible restaurants (open ≥ 12 full fiscal periods)',
+        context: 'AUV of $2.6M is strong for fast-casual; comparable to Chipotle\'s $2.9M AUV. Uses 12 fiscal periods for eligibility.'
+      },
+      {
+        name: 'CAVA Restaurant-Level Profit Margin',
+        value: '20.3%',
+        color: 'var(--amber)',
+        s1_definition: 'CAVA Restaurant-Level Profit represents CAVA Revenue in the specified period less food, beverage, and packaging, labor, occupancy, and other operating expenses, excluding depreciation and amortization and pre-opening costs. CAVA Restaurant-Level Profit Margin represents CAVA Restaurant-Level Profit as a percentage of CAVA Revenue.',
+        s1_formula: '(CAVA Revenue − Food/Bev/Packaging − Labor − Occupancy − Other OpEx) ÷ CAVA Revenue × 100',
+        context: 'Excludes corporate-level G&A and D&A. Does not accrue directly to shareholders — a unit-level profitability metric. 20.3% is healthy for fast-casual.'
+      },
+      {
+        name: 'Net New CAVA Restaurant Openings',
+        value: '36',
+        color: 'var(--purple)',
+        s1_definition: 'We define CAVA Restaurants to include all CAVA restaurants open as of the end of the period. Net New CAVA Restaurant Openings reflects the number of new CAVA restaurants opened during the period, net of any permanent closures.',
+        s1_formula: 'New CAVA restaurants opened − Permanent closures during the period',
+        context: '36 net new in FY2022 (from 227 to 263); targeting 15%+ annual unit growth. Also tracks Zoes Kitchen conversions separately.'
+      }
+    ]
+  },
+  {
+    id: 'ARM', period: 'FY2023',
+    kpis: [
+      {
+        name: 'Number of Chips Shipped',
+        value: '30.6B',
+        color: 'var(--blue)',
+        s1_definition: 'Each quarter, most of our customers, and those contracted through Arm China, furnish us with royalty reports setting forth the actual number of Arm-powered chips they shipped in the immediately preceding quarter. Royalty reports received in the 12-month period from April 1 to March 31 relate to chip shipments made in the period from January 1 to December 31. We consider the number of chips reported as shipped by our customers as a key performance indicator because it represents the acceptance of our products.',
+        s1_formula: 'Sum of Arm-powered chips reported shipped by all licensees in calendar year (CY), reported on a one-quarter lag',
+        context: '30.6B chips shipped in CY2022. Note the timing lag: ARM\'s FY2023 (ending Mar 2023) reports CY2022 chip shipments. Cumulative: 250B+ Arm-based chips shipped to date.'
+      },
+      {
+        name: 'Annualized Contract Value (ACV)',
+        value: '~$1.7B',
+        color: 'var(--purple)',
+        s1_definition: 'We define ACV as the total annualized committed fees, excluding any potential future royalty revenue, for all signed agreements deemed to be active through the last day of each applicable reporting period. Arm Total Access agreements and ALAs are annualized over the number of years in the contract. Any other license agreements are deemed to be active for, and annualized over, three years based on historical licensing patterns.',
+        s1_formula: 'Sum of (committed license fees ÷ contract years) for all active agreements; excludes royalties',
+        context: 'ACV is an operational metric based on committed fees, not recognized revenue, and therefore is not reconcilable to any GAAP measure. 3-year default annualization for non-TLA licenses.'
+      },
+      {
+        name: 'Royalty Revenue',
+        value: '$1,680M',
+        color: 'var(--green)',
+        s1_definition: 'Royalties are generally either set as a percentage of the licensee\'s average selling price per chip or as a fixed amount per chip. The royalty rates per chip typically reduce over time as the total volume of chips shipped increases; notwithstanding such reductions, license agreements typically include a minimum royalty percentage or fee per chip.',
+        s1_formula: 'Sum of (royalty rate × ASP × units shipped) across all licensees, subject to minimums per agreement',
+        context: 'Royalty revenue represents ~63% of total revenue. Rate declines with volume but is offset by higher chip complexity and more Arm IP per chip. Royalty revenue recognized on a one-quarter lag.'
+      },
+      {
+        name: 'License Revenue',
+        value: '$999M',
+        color: 'var(--amber)',
+        s1_definition: 'License and other revenue consists of fees charged for granting customers access to our IP. License fees are generally recognized over the period the customer can access and benefit from the IP. Revenue from upfront access licenses, perpetual licenses, and certain license renewals is recognized at a point in time when the customer is granted the right to use the IP.',
+        s1_formula: 'Sum of licensing agreement fees recognized in the period (point-in-time or over-time depending on license type)',
+        context: 'License revenue is ~37% of total; more lumpy than royalties. Driven by new Arm Total Access and Arm Flexible Access agreements.'
+      }
+    ]
+  },
+  {
+    id: 'VIK', period: 'FY2023',
+    kpis: [
+      {
+        name: 'Passenger Cruise Days (PCDs)',
+        value: '4.6M',
+        color: 'var(--blue)',
+        s1_definition: 'Passenger Cruise Days, with respect to any given period, are measurements of capacity that represent, for each ship operating during the relevant period, the number of berths multiplied by the number of Ship Operating Days, determined on an aggregated basis for all ships in operation during the relevant period.',
+        s1_formula: 'Sum of (berths × Ship Operating Days) across all vessels in the period',
+        context: 'Capacity PCDs were ~4.8M in 2023; actual PCDs ~4.6M reflecting 95.6% occupancy. Viking does not allow more than 2 guests per 2-berth stateroom (unlike some competitors), so occupancy cannot exceed 100%.'
+      },
+      {
+        name: 'Occupancy',
+        value: '95.6%',
+        color: 'var(--green)',
+        s1_definition: 'Occupancy is the ratio, expressed as a percentage, of Passenger Cruise Days to Capacity Passenger Cruise Days with respect to any given period. Contrary to many of our competitors, we do not allow more than two passengers to occupy a two-berth stateroom. As a result, our Occupancy cannot exceed 100%.',
+        s1_formula: 'Passenger Cruise Days ÷ Capacity Passenger Cruise Days × 100',
+        context: 'Key differentiator: Viking caps occupancy at 100% while competitors like Carnival/Royal Caribbean can exceed 100% by allowing 3+ guests per cabin. Makes direct comparison misleading.'
+      },
+      {
+        name: 'Net Yield',
+        value: '$394/PCD',
+        color: 'var(--amber)',
+        s1_definition: 'Net Yield is defined as Adjusted Gross Margin divided by Passenger Cruise Days. Adjusted Gross Margin is gross margin adjusted for vessel operating expenses and ship depreciation and impairment.',
+        s1_formula: 'Adjusted Gross Margin ÷ Passenger Cruise Days',
+        context: 'Net Yield is the cruise industry\'s core profitability-per-passenger metric. Viking\'s premium positioning (no casinos, focus on destination-oriented travel) supports higher yield vs. mass-market lines.'
+      },
+      {
+        name: 'Adjusted EBITDA',
+        value: '$1,090M',
+        color: 'var(--purple)',
+        s1_definition: 'Adjusted EBITDA is defined as EBITDA adjusted to exclude certain non-cash fair value adjustments, restructuring charges and non-recurring items. Adjusted EBITDA Margin is the ratio of Adjusted EBITDA divided by Adjusted Gross Margin.',
+        s1_formula: 'EBITDA + non-cash fair value adjustments + restructuring charges + non-recurring items',
+        context: 'Reported net loss of -$1.86B in FY2023 was driven by pre-IPO warrant revaluations and preference share conversions — Adjusted EBITDA of $1.09B reflects underlying operational strength.'
+      }
+    ]
+  },
+  {
+    id: 'BIRK', period: 'FY2023',
+    kpis: [
+      {
+        name: 'Units Sold',
+        value: '~33M pairs',
+        color: 'var(--blue)',
+        s1_definition: 'Total pairs of footwear sold across all channels (DTC and B2B) during the fiscal year. Birkenstock manages supply deliberately, often producing fewer units than demand would support to maintain brand scarcity and pricing power.',
+        s1_formula: 'Count of pairs sold across all channels and geographies',
+        context: 'Units grew at ~12% CAGR from FY2020 to FY2022. Birkenstock deliberately constrains supply — demand exceeds production capacity, which supports premium pricing and full-price sell-through.'
+      },
+      {
+        name: 'Average Selling Price (ASP)',
+        value: '€45+',
+        color: 'var(--amber)',
+        s1_definition: 'ASP refers to average selling price across all units sold. Birkenstock\'s ASP strategy employs key levers such as expansion of the DTC channel, management of price through a brand-appropriate markdown framework, optimized SKU management, introduction of higher-priced silhouettes, and premiumization of materials and construction.',
+        s1_formula: 'Total revenue ÷ Total units sold',
+        context: 'ASP grew at 16% CAGR between FY2020 and FY2022. Driven by DTC channel shift (higher prices vs. wholesale), premiumization of materials, and introduction of closed-toe silhouettes.'
+      },
+      {
+        name: 'DTC Penetration',
+        value: '38%',
+        color: 'var(--green)',
+        s1_definition: 'DTC (Direct-to-Consumer) penetration represents the share of total revenue generated through Birkenstock\'s own channels, including e-commerce and owned retail stores, as opposed to B2B wholesale distribution. The DTC channel enables brand identity expression, direct customer engagement, real-time behavioral data capture, and access to the most distinctive product styles.',
+        s1_formula: 'DTC Revenue ÷ Total Revenue × 100',
+        context: 'DTC grew from 30% in FY2020 to 38% in FY2022. DTC carries higher margins than wholesale; increasing DTC mix is a core strategic lever for margin expansion.'
+      },
+      {
+        name: 'Constant Currency Revenue Growth',
+        value: '20%',
+        color: 'var(--purple)',
+        s1_definition: 'We define Constant currency revenue as total revenue excluding the effect of foreign exchange rate movements. Constant currency revenue is calculated by translating the current period foreign currency revenues using the prior period exchange rate.',
+        s1_formula: 'Current period revenue (at prior period FX rates) ÷ Prior period revenue − 1',
+        context: 'Reports in EUR; USD translation adds volatility. Constant currency removes FX noise — important for a European company with global revenue. FY2023 reported growth was 20% in EUR terms.'
+      }
+    ]
+  }
+];
+
+function renderOpKpis() {
+  const filter = document.getElementById('opkpi-co-filter').value;
+  const ids = getFilteredIds();
+  const globalFiltered = OPKPI_BY_COMPANY.filter(c => ids.has(c.id));
+  const data = filter === 'all' ? globalFiltered : globalFiltered.filter(c => c.id === filter);
+  const container = document.getElementById('opkpi-cards');
+
+  if (!data.length) {
+    container.innerHTML = '<div class="opkpi-empty">No operational KPIs available for this selection.</div>';
+    return;
+  }
+
+  container.innerHTML = data.map(comp => {
+    const c = co(comp.id);
+    const cards = comp.kpis.map(kpi => {
+      return `
+        <div class="opkpi-card" style="border-left-color:${kpi.color || 'var(--slate-300)'}">
+          <div class="kpi-header">
+            <div class="kpi-name">${kpi.name}</div>
+            <div class="kpi-value" style="color:${kpi.color || 'var(--navy)'}">${kpi.value}</div>
+          </div>
+          <div class="kpi-def">
+            <strong>S-1 Definition:</strong> ${kpi.s1_definition}
+          </div>
+          <div class="kpi-def" style="border-top:none;padding-top:0;margin-top:4px">
+            <strong>Calculation:</strong> ${kpi.s1_formula}
+          </div>
+          ${kpi.context ? `<div class="kpi-context">${kpi.context}</div>` : ''}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="opkpi-company">
+        <div class="opkpi-company-header">
+          <div class="dot" style="background:${c.color}"></div>
+          <h3>${c.ticker} — ${c.name}</h3>
+          <div class="period-tag">${comp.period}</div>
+          <div style="font-size:10px;color:var(--slate-400);margin-left:8px">Definitions from S-1 filing</div>
+        </div>
+        <div class="opkpi-grid">${cards}</div>
+      </div>`;
+  }).join('');
+}
+
+COMPANIES.forEach(c => {
+  document.getElementById('opkpi-co-filter').innerHTML += `<option value="${c.id}">${c.ticker} — ${c.name}</option>`;
+});
+document.getElementById('opkpi-co-filter').addEventListener('change', renderOpKpis);
+
+// ═══ INIT ═══
+updateSlicerUI();
+renderAll();
+</script>
+</body>
+</html>
